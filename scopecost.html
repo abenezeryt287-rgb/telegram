@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ScopeCost — Turn extra work into a change order</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+
+    --paper: #EFF1EA;
+    --paper-card: #FCFCFA;
+    --ink: #1C2320;
+    --ink-soft: #5B6259;
+    --ink-faint: #8A9088;
+    --ledger: #1F5C52;
+    --ledger-dim: #E4EBE6;
+    --stamp: #A8402D;
+    --stamp-dim: #F3E3DE;
+    --line: #D3D6CB;
+    --line-strong: #B7BBAD;
+    --shadow: rgba(28, 35, 32, 0.14);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #141815;
+      --paper-card: #1B211D;
+      --ink: #E9ECE6;
+      --ink-soft: #A8AFA4;
+      --ink-faint: #737B70;
+      --ledger: #6FBBA9;
+      --ledger-dim: #1E2C27;
+      --stamp: #E08268;
+      --stamp-dim: #2E1F1A;
+      --line: #2C332D;
+      --line-strong: #3C453D;
+      --shadow: rgba(0, 0, 0, 0.45);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #141815;
+    --paper-card: #1B211D;
+    --ink: #E9ECE6;
+    --ink-soft: #A8AFA4;
+    --ink-faint: #737B70;
+    --ledger: #6FBBA9;
+    --ledger-dim: #1E2C27;
+    --stamp: #E08268;
+    --stamp-dim: #2E1F1A;
+    --line: #2C332D;
+    --line-strong: #3C453D;
+    --shadow: rgba(0, 0, 0, 0.45);
+  }
+
+  * { box-sizing: border-box; }
+
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.5;
+  }
+
+  .wrap {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 0 28px;
+  }
+
+  h1, h2, h3 {
+    font-family: 'Newsreader', Georgia, serif;
+    font-weight: 500;
+    color: var(--ink);
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+
+  .mono {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  }
+
+  a { color: inherit; }
+
+  img, svg { max-width: 100%; }
+
+  /* ---------- top bar ---------- */
+  .topbar {
+    padding: 22px 0 0;
+  }
+  .topbar-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .logo {
+    font-family: 'Newsreader', serif;
+    font-size: 1.25rem;
+    font-weight: 600;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .logo .mark {
+    width: 9px;
+    height: 9px;
+    background: var(--stamp);
+    display: inline-block;
+    border-radius: 1px;
+    transform: translateY(-2px);
+  }
+  .badge {
+    font-size: 0.78rem;
+    color: var(--ledger);
+    border: 1px solid var(--line-strong);
+    background: var(--ledger-dim);
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  /* ---------- hero ---------- */
+  .hero {
+    padding: 64px 0 72px;
+    display: grid;
+    grid-template-columns: 1.05fr 0.95fr;
+    gap: 56px;
+    align-items: center;
+  }
+  .hero h1 {
+    font-size: clamp(2.1rem, 4.2vw, 3.1rem);
+    line-height: 1.12;
+    max-width: 15ch;
+  }
+  .hero p.sub {
+    margin-top: 20px;
+    max-width: 46ch;
+    color: var(--ink-soft);
+    font-size: 1.05rem;
+    line-height: 1.6;
+  }
+  .cta-row {
+    display: flex;
+    gap: 14px;
+    margin-top: 30px;
+    flex-wrap: wrap;
+  }
+  .btn {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 0.95rem;
+    padding: 13px 22px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+  }
+  .btn-primary {
+    background: var(--ledger);
+    color: #F7F8F4;
+  }
+  .btn-primary:hover { filter: brightness(1.08); }
+  .btn-secondary {
+    background: transparent;
+    border-color: var(--line-strong);
+    color: var(--ink);
+  }
+  .btn-secondary:hover { background: var(--ledger-dim); }
+
+  .fineprint {
+    margin-top: 18px;
+    font-size: 0.85rem;
+    color: var(--ink-faint);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  /* ---------- document mockup ---------- */
+  .doc-wrap {
+    display: flex;
+    justify-content: center;
+  }
+  .doc {
+    background: var(--paper-card);
+    border: 1px solid var(--line);
+    box-shadow: 0 18px 40px var(--shadow);
+    width: 100%;
+    max-width: 340px;
+    padding: 26px 24px 22px;
+    transform: rotate(1.2deg);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.82rem;
+  }
+  .doc-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 12px;
+    margin-bottom: 14px;
+  }
+  .doc-head .title {
+    font-family: 'Newsreader', serif;
+    font-size: 1rem;
+    font-style: italic;
+    color: var(--ink);
+  }
+  .doc-head .num { color: var(--ink-faint); font-size: 0.72rem; }
+  .doc-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 7px 0;
+    color: var(--ink-soft);
+    border-bottom: 1px dashed var(--line);
+  }
+  .doc-row span:last-child { color: var(--ink); }
+  .doc-total {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line-strong);
+    align-items: baseline;
+  }
+  .doc-total .label { font-size: 0.78rem; color: var(--ink-soft); }
+  .doc-total .amount {
+    font-size: 1.15rem;
+    color: var(--stamp);
+    font-weight: 600;
+  }
+  .doc-stamp {
+    margin-top: 16px;
+    display: inline-block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.66rem;
+    letter-spacing: 0.06em;
+    color: var(--stamp);
+    border: 1px solid var(--stamp);
+    padding: 3px 9px;
+    border-radius: 3px;
+    transform: rotate(-2deg);
+  }
+
+  /* ---------- shared section spacing ---------- */
+  section { padding: 64px 0; border-top: 1px solid var(--line); }
+  section.no-line { border-top: none; }
+  .eyebrow-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--ink-faint);
+    font-size: 0.85rem;
+    margin-bottom: 14px;
+  }
+  .eyebrow-row .dash { width: 20px; height: 1px; background: var(--line-strong); }
+
+  h2.section-title {
+    font-size: clamp(1.6rem, 2.6vw, 2.1rem);
+    max-width: 20ch;
+    line-height: 1.25;
+  }
+
+  /* ---------- problem ---------- */
+  .problem-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 48px;
+    margin-top: 34px;
+    align-items: start;
+  }
+  .quote-block {
+    font-family: 'Newsreader', serif;
+    font-style: italic;
+    font-size: 1.3rem;
+    color: var(--ink);
+    border-left: 2px solid var(--stamp);
+    padding-left: 20px;
+    line-height: 1.5;
+  }
+  .q-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .q-list li {
+    padding: 14px 0;
+    border-bottom: 1px solid var(--line);
+    color: var(--ink-soft);
+    font-size: 1rem;
+  }
+  .q-list li:first-child { padding-top: 0; }
+
+  /* ---------- how it works ---------- */
+  .step {
+    display: grid;
+    grid-template-columns: 64px 1fr 320px;
+    gap: 32px;
+    padding: 36px 0;
+    border-bottom: 1px solid var(--line);
+    align-items: center;
+  }
+  .step:last-child { border-bottom: none; padding-bottom: 0; }
+  .step:first-of-type { padding-top: 8px; }
+  .step-num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.9rem;
+    color: var(--ledger);
+    border: 1px solid var(--line-strong);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .step h3 { font-size: 1.3rem; font-weight: 500; margin-bottom: 8px; }
+  .step p { color: var(--ink-soft); margin: 0; max-width: 42ch; }
+
+  .step-card {
+    background: var(--paper-card);
+    border: 1px solid var(--line);
+    padding: 18px 20px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.82rem;
+  }
+  .step-card .row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    color: var(--ink-soft);
+  }
+  .step-card .row span:last-child { color: var(--ink); }
+  .step-card .row.total {
+    border-top: 1px solid var(--line-strong);
+    margin-top: 6px;
+    padding-top: 10px;
+    color: var(--ink);
+    font-weight: 600;
+  }
+  .step-card .row.total span:last-child { color: var(--stamp); }
+  .step-card.download {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .step-card.download .dl-btn {
+    background: var(--ledger);
+    color: #F7F8F4;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 8px 14px;
+    border-radius: 5px;
+    white-space: nowrap;
+  }
+
+  /* ---------- before/after ---------- */
+  .compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    margin-top: 36px;
+  }
+  .bubble {
+    background: var(--paper-card);
+    border: 1px solid var(--line);
+    border-radius: 14px 14px 14px 2px;
+    padding: 20px 22px;
+    font-size: 1rem;
+    color: var(--ink-soft);
+    max-width: 320px;
+  }
+  .compare-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--ink-faint);
+    margin-bottom: 12px;
+    display: block;
+  }
+  .order-doc {
+    background: var(--paper-card);
+    border: 1px solid var(--line);
+    padding: 20px 22px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.85rem;
+  }
+  .order-doc .row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    color: var(--ink-soft);
+  }
+  .order-doc .row span:last-child { color: var(--ink); }
+  .order-doc .sum {
+    border-top: 1px solid var(--line-strong);
+    margin-top: 10px;
+    padding-top: 10px;
+  }
+  .order-doc .sum .row.grand span:last-child {
+    color: var(--stamp);
+    font-weight: 600;
+    font-size: 1rem;
+  }
+
+  /* ---------- for freelancers ---------- */
+  .statement {
+    text-align: left;
+    max-width: 640px;
+  }
+  .statement h2 { margin-bottom: 16px; }
+  .statement p { color: var(--ink-soft); font-size: 1.05rem; max-width: 52ch; }
+  .verbs {
+    margin-top: 24px;
+    display: flex;
+    gap: 28px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.9rem;
+    color: var(--ledger);
+    flex-wrap: wrap;
+  }
+
+  /* ---------- features ---------- */
+  .feature-list { margin-top: 30px; }
+  .feature-row {
+    display: grid;
+    grid-template-columns: 28px 220px 1fr;
+    gap: 24px;
+    padding: 22px 0;
+    border-bottom: 1px solid var(--line);
+    align-items: baseline;
+  }
+  .feature-row:first-child { padding-top: 0; }
+  .feature-row:last-child { border-bottom: none; }
+  .feature-tick {
+    width: 16px;
+    height: 16px;
+    border: 1.5px solid var(--ledger);
+    border-radius: 2px;
+    position: relative;
+    top: 2px;
+  }
+  .feature-row h3 {
+    font-size: 1.05rem;
+    font-weight: 600;
+    font-family: 'Inter', sans-serif;
+    color: var(--ink);
+  }
+  .feature-row p { margin: 0; color: var(--ink-soft); }
+
+  /* ---------- final cta ---------- */
+  .final-cta {
+    text-align: left;
+    padding-bottom: 80px;
+  }
+  .final-cta-box {
+    background: var(--ledger);
+    color: #F7F8F4;
+    padding: 56px 48px;
+    border-radius: 10px;
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr;
+    gap: 32px;
+    align-items: center;
+  }
+  .final-cta-box h2 { color: #F7F8F4; max-width: 16ch; }
+  .final-cta-box p { color: #D7E4DE; margin-top: 12px; max-width: 40ch; }
+  .final-cta-box .btn-primary {
+    background: #F7F8F4;
+    color: var(--ledger);
+  }
+  .final-cta-box .fineprint { color: #B9CCC3; }
+  .final-actions { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
+
+  footer {
+    padding: 28px 0 48px;
+    color: var(--ink-faint);
+    font-size: 0.85rem;
+    font-family: 'IBM Plex Mono', monospace;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  @media (max-width: 860px) {
+    .hero { grid-template-columns: 1fr; gap: 40px; padding-top: 40px; }
+    .doc-wrap { order: -1; }
+    .doc { transform: rotate(0.6deg); max-width: 300px; }
+    .problem-grid { grid-template-columns: 1fr; gap: 28px; }
+    .step { grid-template-columns: 1fr; gap: 16px; }
+    .step-num { margin-bottom: 4px; }
+    .compare { grid-template-columns: 1fr; }
+    .feature-row { grid-template-columns: 22px 1fr; }
+    .feature-row h3 { grid-column: 2; }
+    .feature-row p { grid-column: 2; }
+    .final-cta-box { grid-template-columns: 1fr; text-align: left; padding: 36px 26px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--stamp);
+    outline-offset: 2px;
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap topbar">
+  <div class="topbar-inner">
+    <div class="logo"><span class="mark"></span>ScopeCost</div>
+    <div class="badge">Coming soon — more features on the way</div>
+  </div>
+</div>
+
+<div class="wrap hero">
+  <div>
+    <h1>Turn extra client requests into professional change orders.</h1>
+    <p class="sub">When a client asks for work outside the original scope, calculate the additional cost, adjust the price, and generate a client-ready change order in seconds.</p>
+    <div class="cta-row">
+      <button class="btn btn-primary">Create a Change Order</button>
+      <button class="btn btn-secondary">See How It Works</button>
+    </div>
+    <div class="fineprint">No account. No subscription. No complicated setup.</div>
+  </div>
+  <div class="doc-wrap">
+    <div class="doc">
+      <div class="doc-head">
+        <span class="title">Change Order</span>
+        <span class="num">No. 0042</span>
+      </div>
+      <div class="doc-row"><span>Blog system — 8h</span><span>$320</span></div>
+      <div class="doc-row"><span>Admin interface — 5h</span><span>$200</span></div>
+      <div class="doc-row"><span>Testing — 2h</span><span>$80</span></div>
+      <div class="doc-total">
+        <span class="label">New project total</span>
+        <span class="amount">$2,100</span>
+      </div>
+      <span class="doc-stamp">APPROVED</span>
+    </div>
+  </div>
+</div>
+
+<section id="problem">
+  <div class="wrap problem-grid">
+    <div>
+      <div class="eyebrow-row"><span class="dash"></span>The problem</div>
+      <h2 class="section-title">Extra work shouldn't mean an awkward conversation.</h2>
+      <div class="quote-block" style="margin-top:26px;">"Can you also add a blog?"</div>
+    </div>
+    <div>
+      <ul class="q-list">
+        <li>How much additional time will it take?</li>
+        <li>What should you charge for it?</li>
+        <li>How do you explain the added cost?</li>
+        <li>How do you document the change?</li>
+      </ul>
+      <p style="color: var(--ink-soft); margin-top: 18px;">ScopeCost puts all of that into one simple workflow.</p>
+    </div>
+  </div>
+</section>
+
+<section id="how">
+  <div class="wrap">
+    <div class="eyebrow-row"><span class="dash"></span>How it works</div>
+
+    <div class="step">
+      <div class="step-num mono">1</div>
+      <div>
+        <h3>Add the additional work</h3>
+        <p>Describe what the client requested and estimate the hours required.</p>
+      </div>
+      <div class="step-card">
+        <div class="row"><span>Blog system</span><span>8h</span></div>
+        <div class="row"><span>Admin interface</span><span>5h</span></div>
+        <div class="row"><span>Testing</span><span>2h</span></div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num mono">2</div>
+      <div>
+        <h3>Calculate the additional cost</h3>
+        <p>Set your hourly rate and optionally account for markup, overhead, or risk. Adjust the final price if you need to.</p>
+      </div>
+      <div class="step-card">
+        <div class="row"><span>15 hours × $40</span><span>$600</span></div>
+        <div class="row total"><span>Adjusted price</span><span>$600</span></div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num mono">3</div>
+      <div>
+        <h3>Generate the change order</h3>
+        <p>Turn the calculation into a professional document with client info, project info, hours, costs, and terms.</p>
+      </div>
+      <div class="step-card download">
+        <span>change-order-0042.pdf</span>
+        <span class="dl-btn">Download PDF</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="compare">
+  <div class="wrap">
+    <div class="eyebrow-row"><span class="dash"></span>Say it clearly</div>
+    <h2 class="section-title">Stop saying "it'll cost another $600." Show it instead.</h2>
+    <div class="compare">
+      <div>
+        <span class="compare-label">What you'd usually send</span>
+        <div class="bubble">"The blog will be another $320. Also the admin panel and some testing — probably $600 total?"</div>
+      </div>
+      <div>
+        <span class="compare-label">What ScopeCost generates</span>
+        <div class="order-doc">
+          <div class="row"><span>Blog system — 8h</span><span>$320</span></div>
+          <div class="row"><span>Admin interface — 5h</span><span>$200</span></div>
+          <div class="row"><span>Testing — 2h</span><span>$80</span></div>
+          <div class="sum">
+            <div class="row"><span>Additional project cost</span><span>$600</span></div>
+            <div class="row grand"><span>New project total</span><span>$2,100</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="who" class="no-line">
+  <div class="wrap statement">
+    <div class="eyebrow-row"><span class="dash"></span>Built for freelancers</div>
+    <h2>Keep scope changes simple.</h2>
+    <p>Whether you're building websites, designing brands, developing software, or working on another client project, ScopeCost helps you document additional work before you start it.</p>
+    <div class="verbs">
+      <span>Calculate</span><span>Document</span><span>Send</span>
+    </div>
+  </div>
+</section>
+
+<section id="features">
+  <div class="wrap">
+    <div class="eyebrow-row"><span class="dash"></span>Key features</div>
+    <h2 class="section-title">Everything the moment a project grows needs, nothing it doesn't.</h2>
+    <div class="feature-list">
+      <div class="feature-row">
+        <div class="feature-tick"></div>
+        <h3>Fast calculations</h3>
+        <p>Work out additional project costs without spreadsheets or complicated tools.</p>
+      </div>
+      <div class="feature-row">
+        <div class="feature-tick"></div>
+        <h3>Professional PDFs</h3>
+        <p>Generate a client-ready change order document with one click.</p>
+      </div>
+      <div class="feature-row">
+        <div class="feature-tick"></div>
+        <h3>Flexible pricing</h3>
+        <p>Adjust your final price after calculating the estimated cost.</p>
+      </div>
+      <div class="feature-row">
+        <div class="feature-tick"></div>
+        <h3>No account required</h3>
+        <p>Your project information stays in your browser. Nothing to sign up for.</p>
+      </div>
+      <div class="feature-row">
+        <div class="feature-tick"></div>
+        <h3>Built around scope changes</h3>
+        <p>Focused specifically on the moment when a project grows beyond its original agreement.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="cta" class="final-cta">
+  <div class="wrap">
+    <div class="final-cta-box">
+      <div>
+        <h2>Your scope changed. Your documentation should too.</h2>
+        <p>Calculate the additional cost and create a professional change order in seconds.</p>
+      </div>
+      <div class="final-actions">
+        <button class="btn btn-primary">Create Your First Change Order</button>
+        <span class="fineprint">Free to use. No account required.</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="wrap">
+  <span>ScopeCost</span>
+  <span>Landing page preview — coming soon</span>
+</footer>
+
+</body>
+</html>
